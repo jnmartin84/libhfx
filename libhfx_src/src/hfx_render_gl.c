@@ -12,6 +12,10 @@
 
 extern uint16_t hfx_depth_buffer[];
 
+void hfx_cull_face(hfx_state *state, uint32_t mode) {
+	state->cull_mode = mode;
+}
+
 void hfx_clear_color_f(hfx_state *state, float r, float g, float b, float a)
 {
     state->clear_color.r = r*255;
@@ -245,7 +249,6 @@ void hfx_clear(hfx_state *state, uint32_t bits)
                                                     state->display_dim.width,
                                                     hfx_display_get_pointer(state));
     }
-
     /* If we are clearing color buffer */
     if(bits & HFX_COLOR_BUFFER_BIT)
     {
@@ -258,6 +261,7 @@ void hfx_clear(hfx_state *state, uint32_t bits)
     cmds[index++] = HFX_RDP_PKT_SET_MODE(state->rdp_mode);
 
     hfx_cmd_rdp(state, index, cmds);
+	//hfx_rb_submit(state);
 }
 
 typedef struct hfx_vert
@@ -308,19 +312,52 @@ hfx_vert hfx_make_vert(float *pos, float *col, float *tex)
 
 void hfx_draw_tri_f(hfx_state *state, float *v1, float *v2, float *v3, float *vc1, float *vc2, float *vc3, float *vt1, float *vt2, float *vt3)
 {
+    static int draw_tri_calls = 0;
+
     float v1_t[4], v2_t[4], v3_t[4];
     hfx_vert verts[3];
     hfx_vert output_verts[5];
     bool good[3];
 
+	// model view first
     hfx_matrix_vector_multiply(state, state->model_matrix, v1, v1_t);
     hfx_matrix_vector_multiply(state, state->model_matrix, v2, v2_t);
     hfx_matrix_vector_multiply(state, state->model_matrix, v3, v3_t);
-
+	
+	// projection after model view
+  //  hfx_matrix_vector_multiply(state, state->proj_matrix, v1_t, v1_t);
+  //  hfx_matrix_vector_multiply(state, state->proj_matrix, v2_t, v2_t);
+  //  hfx_matrix_vector_multiply(state, state->proj_matrix, v3_t, v3_t);
+//    hfx_matrix_vector_multiply(state, state->viewport_matrix, v1_t, v1_t);
+//    hfx_matrix_vector_multiply(state, state->viewport_matrix, v2_t, v2_t);
+//    hfx_matrix_vector_multiply(state, state->viewport_matrix, v3_t, v3_t);
+	
     verts[0] = hfx_make_vert(v1_t, vc1, vt1);
     verts[1] = hfx_make_vert(v2_t, vc2, vt2);
     verts[2] = hfx_make_vert(v3_t, vc3, vt3);
+/*
+	if(verts[0].pos[2] < 0.0f) verts[0].pos[2] = 0.0f;
+	if(verts[1].pos[2] < 0.0f) verts[1].pos[2] = 0.0f;
+	if(verts[2].pos[2] < 0.0f) verts[2].pos[2] = 0.0f;
+	if(verts[0].pos[2] > 65532.0f*8.0/10.0) verts[0].pos[2] = 65532.0f*8.0/10.0;
+	if(verts[1].pos[2] > 65532.0f*8.0/10.0) verts[1].pos[2] = 65532.0f*8.0/10.0;
+	if(verts[2].pos[2] > 65532.0f*8.0/10.0) verts[2].pos[2] = 65532.0f*8.0/10.0;
+			if(verts[0].pos[0] < -16384.0f) verts[0].pos[0] = -16384.0f;
+			if(verts[1].pos[0] < -16384.0f) verts[1].pos[0] = -16384.0f;
+			if(verts[2].pos[0] < -16384.0f) verts[2].pos[0] = -16384.0f;
+			
+			if(verts[0].pos[0] > 16384.0f) verts[0].pos[0] = 16384.0f;
+			if(verts[1].pos[0] > 16384.0f) verts[1].pos[0] = 16384.0f;
+			if(verts[2].pos[0] > 16384.0f) verts[2].pos[0] = 16384.0f;
 
+			if(verts[0].pos[1] < -16384.0f) verts[0].pos[1] = -16384.0f;
+			if(verts[1].pos[1] < -16384.0f) verts[1].pos[1] = -16384.0f;
+			if(verts[2].pos[1] < -16384.0f) verts[2].pos[1] = -16384.0f;
+			
+			if(verts[0].pos[1] > 16384.0f) verts[0].pos[1] = 16384.0f;
+			if(verts[1].pos[1] > 16384.0f) verts[1].pos[1] = 16384.0f;
+			if(verts[2].pos[1] > 16384.0f) verts[2].pos[1] = 16384.0f;
+*/	
     for(int i=0; i < 3; i++)
     {
         float *cur_vert = &verts[i].pos[0];
@@ -372,42 +409,173 @@ void hfx_draw_tri_f(hfx_state *state, float *v1, float *v2, float *v3, float *vc
 
     if(num_tri > 0)
     {
-        float w_depth;
-        output_verts[0].pos[0] = ((output_verts[0].pos[0]/
-                                   output_verts[0].pos[3])+1)*(320.0f/2.0f);
-        output_verts[0].pos[1] = ((output_verts[0].pos[1]/
-                                   output_verts[0].pos[3])-1)*(-240.0f/2.0f);
-        w_depth = output_verts[0].pos[2]/output_verts[0].pos[3];
-        output_verts[0].pos[2] = (w_depth-1)*(-1.0f/2.0f);
+        float w_depth1;
+		float w_depth2;
+		float w_depth3;
+
+        output_verts[0].pos[0] = ((output_verts[0].pos[0] / output_verts[0].pos[3])+1) * (320.0f/2.0f);
+        output_verts[0].pos[1] = ((output_verts[0].pos[1] / output_verts[0].pos[3])-1) * (-240.0f/2.0f);
+        w_depth1 = output_verts[0].pos[2]/(output_verts[0].pos[3]);
+        output_verts[0].pos[2] = (w_depth1-1) * (-1.0f/2.0f);
 
         output_verts[0].tex[0] /= output_verts[0].pos[3];
         output_verts[0].tex[1] /= output_verts[0].pos[3];
         
-        output_verts[index-1].pos[0] = ((output_verts[index-1].pos[0]/
-                                         output_verts[index-1].pos[3])+1)*(320.0f/2.0f);
-        output_verts[index-1].pos[1] = ((output_verts[index-1].pos[1]/
-                                         output_verts[index-1].pos[3])-1)*(-240.0f/2.0f);
-        w_depth = output_verts[index-1].pos[2]/output_verts[index-1].pos[3];
-        output_verts[index-1].pos[2] = (w_depth-1)*(-1.0f/2.0f);
+        output_verts[index-1].pos[0] = ((output_verts[index-1].pos[0] / output_verts[index-1].pos[3])+1) * (320.0f/2.0f);
+        output_verts[index-1].pos[1] = ((output_verts[index-1].pos[1] / output_verts[index-1].pos[3])-1) * (-240.0f/2.0f);
+        w_depth2 = output_verts[index-1].pos[2]/(output_verts[index-1].pos[3]);
+        output_verts[index-1].pos[2] = (w_depth2-1)*(-1.0f/2.0f);
 
         output_verts[index-1].tex[0] /= output_verts[index-1].pos[3];
         output_verts[index-1].tex[1] /= output_verts[index-1].pos[3];
 
         for(int i=0; i < num_tri; i++)
         {
-            output_verts[index].pos[0] = ((output_verts[index].pos[0]/
-                                           output_verts[index].pos[3])+1)*(320.0f/2.0f);
-            output_verts[index].pos[1] = ((output_verts[index].pos[1]/
-                                           output_verts[index].pos[3])-1)*(-240.0f/2.0f);
-            w_depth = output_verts[index].pos[2]/output_verts[index].pos[3];
-            output_verts[index].pos[2] = (w_depth-1)*(-1.0f/2.0f);
-            output_verts[index].tex[0] /= output_verts[index].pos[3];
-            output_verts[index].tex[1] /= output_verts[index].pos[3];
+// x = ((x/w)+1) * 320 / 2
+// y = ((y/w)-1) * -240 / 2
+// z = ((z/w)-1) * -1 / 2
+           output_verts[index].pos[0] = ((output_verts[index].pos[0] / output_verts[index].pos[3])+1) * (320.0f/2.0f);
+		   output_verts[index].pos[1] = ((output_verts[index].pos[1] / output_verts[index].pos[3])-1) * (-240.0f/2.0f);
+           w_depth3 = output_verts[index].pos[2]/(output_verts[index].pos[3]);
+           output_verts[index].pos[2] = (w_depth3-1) * (-1.0f/2.0f);
+           output_verts[index].tex[0] /= output_verts[index].pos[3];
+           output_verts[index].tex[1] /= output_verts[index].pos[3];
+#if 1
+#define x1 output_verts[0].pos[0]
+#define y1 output_verts[0].pos[1] 
+#define z1 output_verts[0].pos[2]
+#define w1 output_verts[0].pos[3]
 
+#define x2 output_verts[index-1].pos[0]
+#define y2 output_verts[index-1].pos[1] 
+#define z2 output_verts[index-1].pos[2]
+#define w2 output_verts[index-1].pos[3]
+
+#define x3 output_verts[index].pos[0]
+#define y3 output_verts[index].pos[1]
+#define z3 output_verts[index].pos[2]
+#define w3 output_verts[index].pos[3]
+
+#define MAX_DIST  ((8.99f*1024.0f))
+
+//            c.x = clamp(c.x, -16384.0f, 16384.0f);
+  //          c.y = clamp(c.y, -16384.0f, 16384.0f);
+    //        result.z = uint32(clamp(c.z, 0.0f, 1.0f) * 65535.0f) << 16;
+
+
+			if(w1 < 0.0f || w2 < 0.0f || w3 < 0.0f) {
+				goto skip_draw;
+			}
+			if(w1 > MAX_DIST || w2 > MAX_DIST || w3 > MAX_DIST) {
+				goto skip_draw;
+			}
+#if 1
+			if(x1 < 0.0f && x2 < 0.0f && x3 < 0.0f) {
+				goto skip_draw;
+			}
+			if(x1 >319.0f && x2 >319.0f && x3 > 319.0f) {
+				goto skip_draw;
+			}
+			if(y1 < 0.0f && y2 < 0.0f && y3 < 0.0f){ 
+				goto skip_draw;
+			}
+			if(y1 > 239.0f && y2 >239.0f && y3 >239.0f){ 
+				goto skip_draw;
+			}
+#endif
+#if 1			
+			if(output_verts[0].pos[0] < -16384.0f) output_verts[0].pos[0] = -16384.0f;
+			if(output_verts[index-1].pos[0] < -16384.0f) output_verts[index-1].pos[0] = -16384.0f;
+			if(output_verts[index].pos[0] < -16384.0f) output_verts[index].pos[0] = -16384.0f;
+			
+			if(output_verts[0].pos[0] > 16384.0f) output_verts[0].pos[0] = 16384.0f;
+			if(output_verts[index-1].pos[0] > 16384.0f) output_verts[index-1].pos[0] = 16384.0f;
+			if(output_verts[index].pos[0] > 16384.0f) output_verts[index].pos[0] = 16384.0f;
+
+			if(output_verts[0].pos[1] < -16384.0f) output_verts[0].pos[1] = -16384.0f;
+			if(output_verts[index-1].pos[1] < -16384.0f) output_verts[index-1].pos[1] = -16384.0f;
+			if(output_verts[index].pos[1] < -16384.0f) output_verts[index].pos[1] = -16384.0f;
+			
+			if(output_verts[0].pos[1] > 16384.0f) output_verts[0].pos[1] = 16384.0f;
+			if(output_verts[index-1].pos[1] > 16384.0f) output_verts[index-1].pos[1] = 16384.0f;
+			if(output_verts[index].pos[1] > 16384.0f) output_verts[index].pos[1] = 16384.0f;
+
+#if 1
+// backface
+if(state->caps.cull_face == true) {
+ if(state->cull_mode == HFX_BACK) {
+			if(((x2 - x1) * (y3 - y1)) - ((x3 - x1) * (y2 - y1)) < 0.0f) {
+			   goto skip_draw;
+			}
+}
+// frontface
+/*else if(state->cull_mode == HFX_FRONT) {
+			if(((x2 - x1) * (y3 - y1)) - ((x3 - x1) * (y2 - y1)) > 0.0f) {
+			   goto skip_draw;
+			}
+}*/
+}
+#endif
+
+			
+#if 1
+			if(output_verts[0].pos[2] < 0.0f) output_verts[0].pos[2] = 0.0f;
+			if(output_verts[index-1].pos[2] < 0.0f) output_verts[index-1].pos[2] = 0.0f;//+0.00001f;
+			if(output_verts[index].pos[2] < 0.0f) output_verts[index].pos[2] = 0.0f;//+0.00002f;
+			
+			if(output_verts[0].pos[2] > 0.999f) output_verts[0].pos[2] = 0.999f;
+			if(output_verts[index-1].pos[2] > 0.999f) output_verts[index-1].pos[2] = 0.999f;
+			if(output_verts[index].pos[2] > 0.999f) output_verts[index].pos[2] = 0.999f;
+
+			
+			output_verts[0].pos[2] *= 4096.0f;//8192.0f;//16384.0f;//65532.0f;
+			output_verts[index-1].pos[2] *= 4096.0f;//8192.0f;//16384.0f;//65532.0f;
+			output_verts[index].pos[2] *= 4096.0f;//8192.0f;//16384.0f;//65532.0f;
+			//}
+#endif
+#endif
+
+#if 0
+bool dodraw=false;
+int tx1,ty1;
+int tx2,ty2;
+int tx3,ty3;
+ty1 = (int)y1;
+tx1 = (int)x1;
+ty2 = (int)y2;
+tx2 = (int)x2;
+ty3 = (int)y3;
+tx3 = (int)x3;
+uint16_t tw1 = 6 * (uint16_t)w1; 
+uint16_t tw2 = 6 * (uint16_t)w2;
+uint16_t tw3 = 6 * (uint16_t)w3;
+if(tx1 >= 0 && tx1 < 320 && ty1 >= 0 && ty1 < 240 && zb[(ty1*320)+tx1] >= tw1) {
+dodraw = true;
+zb[(ty1*320)+tx1] = tw1;
+}			
+if(tx2 >= 0 && tx2 < 320 && ty2 >= 0 && ty2 < 240 && zb[(ty2*320)+tx2] >= tw2) {
+dodraw=true;
+zb[(ty2*320)+tx2] = tw2;
+}
+if(tx3 >= 0 && tx3 < 320 && ty3 >= 0 && ty3 < 240 && zb[(ty3*320)+tx3]  >= tw3) {
+dodraw=true;
+zb[(ty3*320)+tx3]  = tw3;
+}
+if(dodraw) 
+#endif			
+#endif
+			{
             hfx_render_tri_f(state, output_verts[0].pos, output_verts[index-1].pos, output_verts[index].pos, 
                                     output_verts[0].col, output_verts[index-1].col, output_verts[index].col, 
                                     output_verts[0].tex, output_verts[index-1].tex, output_verts[index].tex);
-            index += 1;
+			draw_tri_calls++;
+			if(draw_tri_calls % 128 == 0) {
+				hfx_rb_submit(state);
+			}
+            }
+
+skip_draw:
+			index += 1;
         }
     }
 }

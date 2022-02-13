@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #define MIN_FLOAT 0.0001f
+//#define MIN_FLOAT 0.00001f
 
 void hfx_render_init(hfx_state *state)
 {
@@ -81,12 +82,12 @@ void barycentric(float px, float py, float x1, float y1, float x2, float y2, flo
 
 uint32_t hfx_float_to_fixed(float a)
 {
-    if(a > 32767)
+    if(a > 32767.0f)
         return (32767<<16);
-    else if(a < -32768)
+    else if(a < -32768.0f)
         return (-32768<<16);
     else
-        return a * 65536.0;
+        return (a * 65536.0f);
 }
 
 uint32_t tri_draw_mode(hfx_state *state)
@@ -123,6 +124,7 @@ void hfx_render_tri_f(hfx_state *state, float *v1, float *v2, float *v3, float *
     uint32_t tri_mode = 0;
     const float to_fixed_11_2 = 4.0f;
     float temp_x, temp_y, temp_z, temp_w;
+
     float x1 = v1[0], y1 = v1[1], z1 = v1[2], w1 = v1[3];
     float x2 = v2[0], y2 = v2[1], z2 = v2[2], w2 = v2[3];
     float x3 = v3[0], y3 = v3[1], z3 = v3[2], w3 = v3[3];

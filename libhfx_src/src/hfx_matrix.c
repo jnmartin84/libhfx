@@ -39,6 +39,19 @@ void hfx_matrix_vector_multiply(hfx_state *state, float *mat, float *vec, float 
     memcpy(result, temp, sizeof(temp));
 }
 
+//#define HFX_MODELVIEW 0
+//#define HFX_PROJECTION 1
+
+void hfx_matrix_mode(hfx_state *state, uint32_t mode) {
+	state->matrix_mode = mode;
+	if(mode == HFX_PROJECTION) {
+		state->matrix_p = &state->proj_matrix[0];
+	}
+	else {
+		state->matrix_p = &state->model_matrix[0];
+	}
+}
+
 void hfx_normalize(hfx_state *state, float *vector, float *result)
 {
     float temp[4];
@@ -59,27 +72,50 @@ void hfx_normalize(hfx_state *state, float *vector, float *result)
     memcpy(result, temp, sizeof(temp));
 }
 
+void hfx_load_matrix_f(hfx_state *state, float *m)
+{
+    state->matrix_p[0] = m[0];
+    state->matrix_p[1] = m[1];
+    state->matrix_p[2] = m[2];
+    state->matrix_p[3] = m[3];
+
+    state->matrix_p[4] = m[4];
+    state->matrix_p[5] = m[5];
+    state->matrix_p[6] = m[6];
+    state->matrix_p[7] = m[7];
+
+    state->matrix_p[8] = m[8];
+    state->matrix_p[9] = m[9];
+    state->matrix_p[10] = m[10];
+    state->matrix_p[11] = m[11];
+
+    state->matrix_p[12] = m[12];
+    state->matrix_p[13] = m[13];
+    state->matrix_p[14] = m[14];
+    state->matrix_p[15] = m[15];
+}
+
 void hfx_load_identity(hfx_state *state)
 {
-    state->model_matrix[0] = 1.0f;
-    state->model_matrix[1] = 0.0f;
-    state->model_matrix[2] = 0.0f;
-    state->model_matrix[3] = 0.0f;
+    state->matrix_p[0] = 1.0f;
+    state->matrix_p[1] = 0.0f;
+    state->matrix_p[2] = 0.0f;
+    state->matrix_p[3] = 0.0f;
 
-    state->model_matrix[4] = 0.0f;
-    state->model_matrix[5] = 1.0f;
-    state->model_matrix[6] = 0.0f;
-    state->model_matrix[7] = 0.0f;
+    state->matrix_p[4] = 0.0f;
+    state->matrix_p[5] = 1.0f;
+    state->matrix_p[6] = 0.0f;
+    state->matrix_p[7] = 0.0f;
 
-    state->model_matrix[8] = 0.0f;
-    state->model_matrix[9] = 0.0f;
-    state->model_matrix[10] = 1.0f;
-    state->model_matrix[11] = 0.0f;
+    state->matrix_p[8] = 0.0f;
+    state->matrix_p[9] = 0.0f;
+    state->matrix_p[10] = 1.0f;
+    state->matrix_p[11] = 0.0f;
 
-    state->model_matrix[12] = 0.0f;
-    state->model_matrix[13] = 0.0f;
-    state->model_matrix[14] = 0.0f;
-    state->model_matrix[15] = 1.0f;
+    state->matrix_p[12] = 0.0f;
+    state->matrix_p[13] = 0.0f;
+    state->matrix_p[14] = 0.0f;
+    state->matrix_p[15] = 1.0f;
 }
 
 void hfx_translate_f(hfx_state *state, float x, float y, float z)
@@ -93,7 +129,7 @@ void hfx_translate_f(hfx_state *state, float x, float y, float z)
     result[14] = z;
     result[15] = 1.0f;
 
-    hfx_matrix_multiply(state, state->model_matrix, result, state->model_matrix);
+    hfx_matrix_multiply(state, state->matrix_p, result, state->matrix_p);
 }
 
 void hfx_rotate_f(hfx_state *state, float angle, float x, float y, float z)
@@ -131,7 +167,7 @@ void hfx_rotate_f(hfx_state *state, float angle, float x, float y, float z)
     result[14] = 0.0f;
     result[15] = 1.0f;
 
-    hfx_matrix_multiply(state, state->model_matrix, result, state->model_matrix);
+    hfx_matrix_multiply(state, state->matrix_p, result, state->matrix_p);
 }
 
 void hfx_scale_f(hfx_state *state, float sx, float sy, float sz)
@@ -143,7 +179,7 @@ void hfx_scale_f(hfx_state *state, float sx, float sy, float sz)
     result[10] = sz;
     result[15] = 1.0f;
 
-    hfx_matrix_multiply(state, state->model_matrix, result, state->model_matrix);
+    hfx_matrix_multiply(state, state->matrix_p, result, state->matrix_p);
 }
 
 void hfx_ortho_f(hfx_state *state, float left, float right, float top, float bottom, float near, float far)
@@ -158,7 +194,7 @@ void hfx_ortho_f(hfx_state *state, float left, float right, float top, float bot
     result[14] = -(far + near) / (far - near);
     result[15] = 1.0f;
 
-    hfx_matrix_multiply(state, state->model_matrix, result, state->model_matrix);
+    hfx_matrix_multiply(state, state->matrix_p, result, state->matrix_p);
 }
 
 void hfx_persp_f(hfx_state *state, float fovy, float aspect, float znear, float zfar)
@@ -172,10 +208,41 @@ void hfx_persp_f(hfx_state *state, float fovy, float aspect, float znear, float 
     result[11] = -1.0f;
     result[14] = (2.0f * zfar * znear) / (zfar - znear);
 
-    hfx_matrix_multiply(state, state->model_matrix, result, state->model_matrix);
+    hfx_matrix_multiply(state, state->matrix_p, result, state->matrix_p);
+}
+
+
+void hfx_viewport(hfx_state *state, float x, float y, float w, float h) {
+//		float result[16] = {0};
+    state->viewport_matrix[0] = 1.0f;
+    state->viewport_matrix[1] = 0.0f;
+    state->viewport_matrix[2] = 0.0f;
+    state->viewport_matrix[3] = 0.0f;
+
+    state->viewport_matrix[4] = 0.0f;
+    state->viewport_matrix[5] = 1.0f;
+    state->viewport_matrix[6] = 0.0f;
+    state->viewport_matrix[7] = 0.0f;
+
+    state->viewport_matrix[8] = 0.0f;
+    state->viewport_matrix[9] = 0.0f;
+    state->viewport_matrix[10] = 1.0f;
+    state->viewport_matrix[11] = 0.0f;
+
+    state->viewport_matrix[12] = 0.0f;
+    state->viewport_matrix[13] = 0.0f;
+    state->viewport_matrix[14] = 0.0f;
+    state->viewport_matrix[15] = 1.0f;
+		state->viewport_matrix[0] = w / 2.0f;
+		state->viewport_matrix[3] = (x + x + w) / 2.0f;
+		state->viewport_matrix[5] = h / 2.0f;
+		state->viewport_matrix[7] = (y + y + h) / 2.0f;
+		state->viewport_matrix[10] = 0.5f;
+		state->viewport_matrix[11] = 0.5f;
+		state->viewport_matrix[15] = 1.0f;
 }
 
 void hfx_mult_matrix_f(hfx_state *state, float *mat)
 {
-    hfx_matrix_multiply(state, state->model_matrix, mat, state->model_matrix);
+    hfx_matrix_multiply(state, state->matrix_p, mat, state->matrix_p);
 }

@@ -46,14 +46,16 @@ void hfx_gen_textures(hfx_state *state, uint32_t n, uint32_t *textures)
     }
 }
 
+uint16_t unsafe_data[32*32] __attribute__((aligned(64)));
+
 void hfx_tex_image_2d(hfx_state *state, uint32_t target, int32_t level, int32_t internalformat, uint32_t width, uint32_t height, int32_t border, uint32_t format, uint32_t type, const void *data)
 {
     int bpp = 2; // TODO Have function to get proper bit depth
     uint32_t size = width * height * bpp;
     hfx_tex_info *cur_tex = &state->tex_info.tex_list[state->tex_info.current_tex];
 
-    cur_tex->unsafe_data = malloc(size + (TEXTURE_ALIGN));
-    cur_tex->data = ALIGN_64BYTE(cur_tex->unsafe_data);
+    cur_tex->unsafe_data = (void*)unsafe_data;//malloc(size + (TEXTURE_ALIGN));
+    cur_tex->data = (void*)unsafe_data;//cur_tex->unsafe_data;//ALIGN_64BYTE(cur_tex->unsafe_data);
 
     memcpy(cur_tex->data, data, size);
 	/* Need to flush and invalidate cache so texture memory is commited

@@ -17,6 +17,7 @@
 #define     HFX_RDP_CMD_SET_COLOR_IMAGE_SIZE_32B       3ull
 #define HFX_RDP_CMD_SET_Z_IMAGE     0x3eull
 #define HFX_RDP_CMD_RESERVE         0xc0ull
+#define HFX_RDP_CMD_SET_FOG_COLOR  0x38ull
 #define HFX_RDP_CMD_SET_FILL_COLOR  0x37ull
 #define HFX_RDP_CMD_FILL_RECT       0x36ull
 #define     HFX_RDP_CMD_FILL_RECT_ARG_MASK 0xfffull 
@@ -244,6 +245,7 @@
                                                 (((uint64_t)(tile)&0x7ull)<<HFX_RDP_CMD_LOAD_TILE_TILE_SHIFT) | \
                                                 (((uint64_t)(sh)&0x1fffull)<<HFX_RDP_CMD_LOAD_TILE_SH_SHIFT) | \
                                                 (((th)&0x1fffull)<<HFX_RDP_CMD_LOAD_TILE_TH_SHIFT))
+#define HFX_RDP_PKT_SET_FOG_COLOR(color) (HFX_RDP_MAKE_CMD(HFX_RDP_CMD_SET_FOG_COLOR) | (color))
 #define HFX_RDP_PKT_SET_FILL_COLOR(color) (HFX_RDP_MAKE_CMD(HFX_RDP_CMD_SET_FILL_COLOR) | (color))
 #define HFX_RDP_PKT_FILL_RECT(xl, yl, xh, yh) (HFX_RDP_MAKE_CMD(HFX_RDP_CMD_FILL_RECT) | \
                                               (((xl)&HFX_RDP_CMD_FILL_RECT_ARG_MASK) << HFX_RDP_CMD_FILL_RECT_XL_SHIFT) | \

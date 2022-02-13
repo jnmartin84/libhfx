@@ -25,7 +25,17 @@
 #define HFX_VERTEX_ARRAY        0x8074
 #define HFX_COLOR_ARRAY         0x8076
 
+//#define HFX_DEPTH_WRITE			0x0B70
 #define HFX_DEPTH_TEST			0x0B71
+
+#define HFX_CULL_FACE			0x0B44
+
+#define HFX_FRONT				0x0404
+#define HFX_BACK				0x0405
+#define HFX_FRONT_AND_BACK		0x0408
+
+#define HFX_MODELVIEW 0
+#define HFX_PROJECTION 1
 
 typedef struct hfx_state hfx_state;
 typedef int32_t HFXfixed;
@@ -44,6 +54,7 @@ HFXfixed hfx_mulx(HFXfixed a, HFXfixed b);
 HFXfixed hfx_divx(HFXfixed a, HFXfixed b);
 
 void hfx_enable(hfx_state *state, uint32_t cap);
+void hfx_disable(hfx_state *state, uint32_t cap);
 
 void hfx_set_scissor(hfx_state *state, uint32_t xh, uint32_t yh, uint32_t xl, uint32_t yl);
 void hfx_draw_tri_f(hfx_state *state, float *v1, float *v2, float *v3, float *vc1, float *vc2, float *vc3, float *vt1, float *vt2, float *vt3);
@@ -51,18 +62,20 @@ void hfx_color_f(hfx_state *state, float r, float g, float b, float a);
 void hfx_clear_color_f(hfx_state *state, float r, float g, float b, float a);
 void hfx_clear(hfx_state *state, uint32_t bits);
 void hfx_load_identity(hfx_state *state);
+void hfx_matrix_mode(hfx_state *state, uint32_t mode);
+void hfx_load_matrix_f(hfx_state *state, float *m);
 void hfx_translate_f(hfx_state *state, float x, float y, float z);
 void hfx_rotate_f(hfx_state *state, float angle, float x, float y, float z);
 void hfx_scale_f(hfx_state *state, float sx, float sy, float sz);
 void hfx_ortho_f(hfx_state *state, float left, float right, float top, float bottom, float near, float far);
 void hfx_persp_f(hfx_state *state, float fovy, float aspect, float znear, float zfar);
 void hfx_mult_matrix_f(hfx_state *state, float *mat);
-
+void hfx_viewport(hfx_state *state, float x, float y, float w, float h);
 void hfx_vertex_pointer(hfx_state *state, uint32_t size, uint32_t type, uint32_t stride, void *data);
 void hfx_color_pointer(hfx_state *state, uint32_t size, uint32_t type, uint32_t stride, void *data);
 void hfx_tex_coord_pointer(hfx_state *state, uint32_t size, uint32_t type, uint32_t stride, void *data);
 void hfx_draw_arrays(hfx_state *state, uint32_t type, uint32_t start, uint32_t count);
-
+void hfx_cull_face(hfx_state *state, uint32_t mode);
 void hfx_gen_textures(hfx_state *state, uint32_t n, uint32_t *textures);
 void hfx_tex_image_2d(hfx_state *state, uint32_t target, int32_t level, int32_t internalformat, uint32_t width, uint32_t height, int32_t border, uint32_t format, uint32_t type, const void *data);
 

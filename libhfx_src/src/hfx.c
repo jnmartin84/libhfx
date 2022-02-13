@@ -65,6 +65,70 @@ hfx_state *hfx_init()
     /* For now hardcode display dimensions to 320x240 */
     state.display_dim.width = 320;
     state.display_dim.height = 240;
+state.cull_mode = HFX_BACK;
+#if 0	
+    state.viewport_matrix[0] = 1.0f;
+    state.viewport_matrix[1] = 0.0f;
+    state.viewport_matrix[2] = 0.0f;
+    state.viewport_matrix[3] = 0.0f;
+
+    state.viewport_matrix[4] = 0.0f;
+    state.viewport_matrix[5] = 1.0f;
+    state.viewport_matrix[6] = 0.0f;
+    state.viewport_matrix[7] = 0.0f;
+
+    state.viewport_matrix[8] = 0.0f;
+    state.viewport_matrix[9] = 0.0f;
+    state.viewport_matrix[10] = 1.0f;
+    state.viewport_matrix[11] = 0.0f;
+
+    state.viewport_matrix[12] = 0.0f;
+    state.viewport_matrix[13] = 0.0f;
+    state.viewport_matrix[14] = 0.0f;
+    state.viewport_matrix[15] = 1.0f;
+#endif	
+    state.model_matrix[0] = 1.0f;
+    state.model_matrix[1] = 0.0f;
+    state.model_matrix[2] = 0.0f;
+    state.model_matrix[3] = 0.0f;
+
+    state.model_matrix[4] = 0.0f;
+    state.model_matrix[5] = 1.0f;
+    state.model_matrix[6] = 0.0f;
+    state.model_matrix[7] = 0.0f;
+
+    state.model_matrix[8] = 0.0f;
+    state.model_matrix[9] = 0.0f;
+    state.model_matrix[10] = 1.0f;
+    state.model_matrix[11] = 0.0f;
+
+    state.model_matrix[12] = 0.0f;
+    state.model_matrix[13] = 0.0f;
+    state.model_matrix[14] = 0.0f;
+    state.model_matrix[15] = 1.0f;
+#if 0
+    state.proj_matrix[0] = 1.0f;
+    state.proj_matrix[1] = 0.0f;
+    state.proj_matrix[2] = 0.0f;
+    state.proj_matrix[3] = 0.0f;
+
+    state.proj_matrix[4] = 0.0f;
+    state.proj_matrix[5] = 1.0f;
+    state.proj_matrix[6] = 0.0f;
+    state.proj_matrix[7] = 0.0f;
+
+    state.proj_matrix[8] = 0.0f;
+    state.proj_matrix[9] = 0.0f;
+    state.proj_matrix[10] = 1.0f;
+    state.proj_matrix[11] = 0.0f;
+
+    state.proj_matrix[12] = 0.0f;
+    state.proj_matrix[13] = 0.0f;
+    state.proj_matrix[14] = 0.0f;
+    state.proj_matrix[15] = 1.0f;
+#endif
+    state.matrix_p = &state.model_matrix[0];
+    state.matrix_mode = HFX_MODELVIEW;
 
     /* Initalize textures */
     hfx_init_textures(&state);
@@ -92,10 +156,10 @@ hfx_state *hfx_init()
     data_ptr[HFX_REG_RB_SIZE/4] = HFX_RB_SIZE;
     data_cache_hit_writeback_invalidate(data_ptr, data_size);
     
-    load_data((void*)&_hfx_ucode_data_start, data_size);
-    load_ucode((void*)&_hfx_ucode_start, ucode_size);
+    rsp_load_data((void*)&_hfx_ucode_data_start, data_size,0);
+    rsp_load_code((void*)&_hfx_ucode_start, ucode_size,0);
     
-    run_ucode();
+    rsp_run_async();
 
 
     hfx_cmd_register_display(&state);

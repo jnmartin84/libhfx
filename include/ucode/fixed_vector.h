@@ -1,7 +1,7 @@
 #ifndef FIXED_VECTOR_H
 #define FIXED_VECTOR_H
 
-#include <ucode.S>
+#include <rsp.inc>
 
 // TODO fill them with element redefine recommendations
 // from pg. 58 of the RSP programming guide

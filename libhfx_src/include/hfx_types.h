@@ -36,6 +36,8 @@ struct hfx_state {
 
     struct
     {
+		bool cull_face;
+        bool depth_write;
         bool depth_test;
         bool vertex_array;
         bool color_array;
@@ -58,8 +60,14 @@ struct hfx_state {
     hfx_color clear_color;
     hfx_color vertex_color;
 
+	uint32_t cull_mode;
+	
+	uint32_t matrix_mode;
     float model_matrix[16];
-
+    float proj_matrix[16];
+	float *matrix_p;
+	float viewport_matrix[16];
+	
     float *vertex_pointer;
     uint32_t vertex_size;
 
